@@ -1,0 +1,19 @@
+[Unit]
+Description=FoodRelay Registry
+After=network.target
+
+[Service]
+Type=simple
+User=foodrelay
+WorkingDirectory=/opt/foodrelay-registry
+EnvironmentFile=/opt/foodrelay-registry/.env
+ExecStart=/opt/foodrelay-registry/registry
+Restart=on-failure
+RestartSec=5s
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/foodrelay-registry
+
+[Install]
+WantedBy=multi-user.target

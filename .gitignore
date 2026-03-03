@@ -1,0 +1,59 @@
+# ── Credentials & secrets ─────────────────────────────────────────────────────
+.env
+*.env
+!.env.example
+
+# ── SQLite databases ──────────────────────────────────────────────────────────
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# ── Go build artifacts ────────────────────────────────────────────────────────
+# Top-level binaries
+/node
+/registry
+
+# Binaries built under cmd/
+cmd/node/node
+cmd/node/node.exe
+cmd/registry/registry
+cmd/registry/registry.exe
+
+# Windows
+*.exe
+
+# Go test and coverage output
+*.test
+*.out
+coverage.html
+coverage.txt
+
+# Vendored dependencies (only if not using vendoring)
+/vendor/
+memory/
+# ── Docker ────────────────────────────────────────────────────────────────────
+/deploy/docker/data/
+
+# ── OS & editor ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── Dev tooling ───────────────────────────────────────────────────────────────
+# ngrok
+ngrok.yml
+.ngrok2/
+CLAUDE.md
+SECURITY.md
+
+# Air (live-reload)
+tmp/
