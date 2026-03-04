@@ -2,10 +2,8 @@ package registry
 
 import (
 	"encoding/json"
-	"html"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/foodrelay/foodrelay/internal/common"
@@ -187,23 +185,3 @@ func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	common.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-// MapUI handles GET /map — a minimal HTML page listing active nodes.
-func (h *Handler) MapUI(w http.ResponseWriter, r *http.Request) {
-	since := time.Now().Add(-15 * time.Minute)
-	nodes, _ := h.Store.ListActiveNodes(since)
-
-	var rows strings.Builder
-	for _, n := range nodes {
-		rows.WriteString("<tr><td>" + html.EscapeString(n.NodeID) +
-			"</td><td>" + html.EscapeString(n.PublicPhone) +
-			"</td><td>" + html.EscapeString(n.LastSeen.Format(time.RFC3339)) + "</td></tr>\n")
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(`<!doctype html><html><head><title>FoodRelay Nodes</title></head><body>
-<h1>Active FoodRelay Nodes</h1>
-<table border="1" cellpadding="6">
-<tr><th>Node ID</th><th>Phone</th><th>Last Seen</th></tr>
-` + rows.String() + `
-</table></body></html>`)) //nolint:errcheck
-}
