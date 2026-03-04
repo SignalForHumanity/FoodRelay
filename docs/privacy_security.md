@@ -5,7 +5,7 @@
 ### Node (local)
 The node stores:
 - Donor/recipient phone numbers (required to send SMS replies)
-- Offer and need records (qty, location, time window, notes, allergens)
+- Offer and need records (description, location, time window)
 - Job records (matched offer+need pairs)
 - All data is local to the node's SQLite database
 

@@ -11,8 +11,8 @@ import (
 // rangeRe matches "9-10pm", "9am-10am", "9:30-10:30pm", "9 - 10pm", etc.
 var rangeRe = regexp.MustCompile(`(?i)(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\s*-\s*(\d{1,2}(?::\d{2})?\s*(?:am|pm))`)
 
-// byRe matches "by 8pm", "by 8:30pm".
-var byRe = regexp.MustCompile(`(?i)^by\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm))$`)
+// byRe matches "by 8pm", "until 8pm", "by 8:30pm", etc.
+var byRe = regexp.MustCompile(`(?i)^(?:by|until)\s+(\d{1,2}(?::\d{2})?\s*(?:am|pm))$`)
 
 // singleRe matches a standalone time like "9pm".
 var singleRe = regexp.MustCompile(`(?i)^(\d{1,2}(?::\d{2})?\s*(?:am|pm))$`)
@@ -72,25 +72,45 @@ func ParseTimeWindow(s string, now time.Time) (start, end time.Time, ok bool) {
 // FindTimeWindow searches text for a time-window token and returns it plus
 // the text with that token removed.
 func FindTimeWindow(text string, now time.Time) (start, end time.Time, remainder string, ok bool) {
-	// Try "by Xpm" first
-	byFull := regexp.MustCompile(`(?i)\bby\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)\b`)
+	before, s, e, after, found := SplitAtTimeWindow(text, now)
+	if !found {
+		return
+	}
+	remainder = strings.TrimSpace(before + " " + after)
+	return s, e, remainder, true
+}
+
+// SplitAtTimeWindow finds the first time-window token in text and returns
+// what comes before it, the parsed window, and what comes after it.
+// Recognises: "by/until Xpm", "X-Ypm" ranges, and standalone "Xpm" (last resort).
+func SplitAtTimeWindow(text string, now time.Time) (before string, start, end time.Time, after string, ok bool) {
+	// "by/until Xpm"
+	byFull := regexp.MustCompile(`(?i)\b(?:by|until)\s+\d{1,2}(?::\d{2})?\s*(?:am|pm)\b`)
 	if loc := byFull.FindStringIndex(text); loc != nil {
 		token := text[loc[0]:loc[1]]
 		s, e, parsed := ParseTimeWindow(token, now)
 		if parsed {
-			remainder = strings.TrimSpace(text[:loc[0]] + " " + text[loc[1]:])
-			return s, e, remainder, true
+			return strings.TrimSpace(text[:loc[0]]), s, e, strings.TrimSpace(text[loc[1]:]), true
 		}
 	}
 
-	// Try "X-Ypm"
+	// "X-Ypm" range
 	rangeFull := regexp.MustCompile(`(?i)\d{1,2}(?::\d{2})?\s*(?:am|pm)?\s*-\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)`)
 	if loc := rangeFull.FindStringIndex(text); loc != nil {
 		token := text[loc[0]:loc[1]]
 		s, e, parsed := ParseTimeWindow(token, now)
 		if parsed {
-			remainder = strings.TrimSpace(text[:loc[0]] + " " + text[loc[1]:])
-			return s, e, remainder, true
+			return strings.TrimSpace(text[:loc[0]]), s, e, strings.TrimSpace(text[loc[1]:]), true
+		}
+	}
+
+	// Standalone "Xpm" / "X:30am" (last resort — requires explicit am/pm)
+	singleFull := regexp.MustCompile(`(?i)\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b`)
+	if loc := singleFull.FindStringIndex(text); loc != nil {
+		token := text[loc[0]:loc[1]]
+		s, e, parsed := ParseTimeWindow(token, now)
+		if parsed {
+			return strings.TrimSpace(text[:loc[0]]), s, e, strings.TrimSpace(text[loc[1]:]), true
 		}
 	}
 

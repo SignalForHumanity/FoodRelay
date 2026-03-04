@@ -42,7 +42,7 @@ func (s *Scheduler) tick() {
 		log.Printf("[scheduler] expired %d offers", n)
 	}
 
-	if n, err := s.Store.ExpireNeeds(now); err != nil {
+	if n, err := s.Store.ExpireNeeds(now.Add(-24 * time.Hour)); err != nil {
 		log.Printf("[scheduler] expire needs: %v", err)
 	} else if n > 0 {
 		log.Printf("[scheduler] expired %d needs", n)

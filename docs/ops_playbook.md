@@ -120,16 +120,17 @@ ngrok http 8080
 Send them the node's SMS number and these instructions:
 
 > "Text OFFER to [number] to donate food. Example:
-> OFFER 12 meals 6-7pm 123 Main St
-> Then reply READY when food is packed."
+> OFFER 3 trays of pasta until 8pm 123 Main St
+> Then reply READY when food is packed and ready for pickup."
 
 ---
 
 ## Onboarding recipients / hubs
 
-> "Text NEED to [number] to request food. Example:
-> NEED 20 meals by 7pm 55 Church St
-> We'll text you when a match is found."
+> "Text NEED to [number] to request food — we'll reply immediately if
+> something is available, or text you as soon as food becomes ready.
+> You can include your address for better matching:
+> NEED 55 Church St"
 
 ---
 
@@ -165,7 +166,8 @@ with systemd.
 | Line | Meaning |
 |------|---------|
 | `[sms] from=+1... body="OFFER ..."` | Inbound SMS received |
-| `[engine] matched offer=N need=M score=...` | Successful match |
+| `[engine] matched offer=N need=M (offer-first fifo)` | Donor went READY, matched to oldest open need |
+| `[engine] matched need=N offer=M (need-first)` | Recipient texted NEED, matched to soonest-expiring READY offer |
 | `[scheduler] expired N offers` | Expiration pass ran |
 | `[scheduler] escalating offer=N` | Unmatched READY offer alerted to admins |
 | `[admin-alert]` | Escalation SMS sent |

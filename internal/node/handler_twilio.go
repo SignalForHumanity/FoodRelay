@@ -42,7 +42,7 @@ func (h *TwilioHandler) handle(from, body string) string {
 			log.Printf("[sms] create offer: %v", err)
 			return "Sorry, we couldn't record your offer. Please try again."
 		}
-		return OfferReceived(cmd.Offer.Qty, cmd.Offer.Unit)
+		return OfferReceived(cmd.Offer.Description, cmd.Offer.Location, cmd.Offer.WindowEnd)
 
 	case "READY":
 		offer, err := h.Store.GetLatestOfferByPhone(from)
@@ -63,14 +63,10 @@ func (h *TwilioHandler) handle(from, body string) string {
 		offer, _ = h.Store.GetOfferByID(offer.ID)
 
 		// Attempt immediate match
-		job, err := h.Engine.MatchOffer(offer)
-		if err != nil {
+		if _, err := h.Engine.MatchOffer(offer); err != nil {
 			log.Printf("[sms] match offer: %v", err)
 		}
-		if job != nil {
-			return OfferReady(offer.Qty, offer.Unit) // donor notified separately by MatchDonor
-		}
-		return OfferReady(offer.Qty, offer.Unit)
+		return OfferReady()
 
 	case "NEED":
 		cmd.Need.Phone = from
@@ -78,12 +74,25 @@ func (h *TwilioHandler) handle(from, body string) string {
 			log.Printf("[sms] create need: %v", err)
 			return "Sorry, we couldn't record your need. Please try again."
 		}
-		return NeedReceived(cmd.Need.Qty, cmd.Need.Unit)
+
+		// Reload to get the assigned ID, then try to match immediately.
+		need, _ := h.Store.GetLatestNeedByPhone(from)
+		if need != nil {
+			job, offer, err := h.Engine.MatchForNeed(need)
+			if err != nil {
+				log.Printf("[sms] match for need: %v", err)
+			}
+			if job != nil {
+				// Return the recipient notification inline as the TwiML reply.
+				return MatchRecipient(offer.Description, offer.Location, offer.WindowEnd)
+			}
+		}
+		return NeedReceived()
 
 	case "CANCEL":
 		return h.handleCancel(from)
 
-	case "HELP":
+	case "FOOD":
 		return HelpText()
 
 	default:

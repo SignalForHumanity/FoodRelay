@@ -1,50 +1,50 @@
 package node
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // OfferReceived is sent to a donor after OFFER is parsed.
-func OfferReceived(qty int, unit string) string {
+func OfferReceived(description, location string, windowEnd time.Time) string {
+	timeStr := ""
+	if !windowEnd.IsZero() {
+		timeStr = fmt.Sprintf(" (until %s)", windowEnd.Format("3:04 PM"))
+	}
 	return fmt.Sprintf(
-		"Got it! We recorded your offer of %d %s. Reply READY when the food is packed and ready for pickup.",
-		qty, unit,
+		"Got it! Offer recorded: %s at %s%s. Reply READY when it's packed and ready for pickup.",
+		description, location, timeStr,
 	)
 }
 
 // OfferReady is sent to a donor after READY is received.
-func OfferReady(qty int, unit string) string {
-	return fmt.Sprintf(
-		"Your %d %s are marked READY. We'll find a match and text you shortly.",
-		qty, unit,
-	)
+func OfferReady() string {
+	return "Your offer is marked READY. We'll notify anyone looking for food and text you when a match is found."
 }
 
 // MatchDonor is sent to the donor when a match is made.
-func MatchDonor(needLocation string, needQty int, unit string) string {
+func MatchDonor(offerLocation string) string {
 	return fmt.Sprintf(
-		"MATCH FOUND! Please prepare %d %s for pickup. The recipient is at: %s. A volunteer or driver will collect. Reply CANCEL to abort.",
-		needQty, unit, needLocation,
+		"MATCH! Someone is on their way to pick up at: %s. Please have your offer ready. Reply CANCEL to abort.",
+		offerLocation,
 	)
 }
 
 // MatchRecipient is sent to the recipient when a match is made.
-func MatchRecipient(offerLocation string, offerQty int, unit string) string {
+func MatchRecipient(description, offerLocation string, windowEnd time.Time) string {
+	timeStr := ""
+	if !windowEnd.IsZero() {
+		timeStr = fmt.Sprintf(" Pickup before %s.", windowEnd.Format("3:04 PM"))
+	}
 	return fmt.Sprintf(
-		"MATCH FOUND! %d %s are available at: %s. Pickup is being arranged. Reply CANCEL to abort.",
-		offerQty, unit, offerLocation,
+		"Food available: %s at %s.%s Head there now! Reply CANCEL to abort.",
+		description, offerLocation, timeStr,
 	)
 }
 
-// NoMatchYet is sent when READY has no open needs to match.
-func NoMatchYet() string {
-	return "No matching needs right now. We'll keep trying and notify you when a match is found."
-}
-
-// NeedReceived is sent to a recipient after NEED is parsed.
-func NeedReceived(qty int, unit string) string {
-	return fmt.Sprintf(
-		"Need recorded: %d %s. We'll notify you when a match is found.",
-		qty, unit,
-	)
+// NeedReceived is sent to a recipient after NEED is registered with no immediate match.
+func NeedReceived() string {
+	return "Got it! We'll text you when food is available nearby."
 }
 
 // Canceled is sent after a CANCEL command.
@@ -61,17 +61,19 @@ func NothingToCancel() string {
 func HelpText() string {
 	return `FoodRelay SMS commands:
 
-OFFER <qty> <unit> <time> <location>
-  e.g. OFFER 12 meals 9-10pm 123 Main St
+OFFER <description> <time> <address>
+  e.g. OFFER 3 trays pasta until 8pm 123 Main St
+  e.g. OFFER hot soup 7-9pm First Baptist Church
 
 READY - mark your offer ready for pickup
 
-NEED <qty> <unit> <time> <location> [priority: N]
-  e.g. NEED 20 meals by 8pm 55 Church St
+NEED [address]
+  e.g. NEED
+  e.g. NEED 55 Church St
 
 CANCEL - cancel your latest active offer or need
 
-HELP - show this message`
+FOOD - show this message`
 }
 
 // EscalationAlert is sent to admin phones.
@@ -84,5 +86,5 @@ func EscalationAlert(offerID int64, phone string, minutesWaiting int) string {
 
 // UnknownCommand is sent when parsing fails.
 func UnknownCommand(raw string) string {
-	return fmt.Sprintf("Sorry, I didn't understand %q. Reply HELP for commands.", raw)
+	return fmt.Sprintf("Sorry, I didn't understand %q. Reply FOOD for commands.", raw)
 }

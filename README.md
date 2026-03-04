@@ -55,25 +55,30 @@ On first node startup, it prints a key — **copy it into `.env` as `NODE_PRIVAT
 
 **Donor flow:**
 ```
-→ OFFER 12 meals 6-7pm 123 Main St notes: sealed
-← Got it! Reply READY when the food is packed.
+→ OFFER 3 trays of pasta until 8pm 123 Main St
+← Got it! Offer recorded: 3 trays of pasta at 123 Main St (until 8:00 PM).
+  Reply READY when it's packed and ready for pickup.
 
 → READY
-← Your 12 meals are marked READY. We'll find a match shortly.
-  [match found]
-← MATCH FOUND! Prepare 20 meals for pickup. Recipient at: 55 Church St.
+← Your offer is marked READY. We'll notify anyone looking for food.
+  [match found — donor also receives:]
+← MATCH! Someone is on their way to pick up at: 123 Main St.
 ```
 
 **Recipient flow:**
 ```
-→ NEED 20 meals by 7pm 55 Church St priority: 2
-← Need recorded: 20 meals. We'll notify you when a match is found.
-  [match found]
-← MATCH FOUND! 12 meals available at: 123 Main St. Pickup is being arranged.
+→ NEED 55 Church St
+  [READY offer exists — immediate reply:]
+← Food available: 3 trays of pasta at 123 Main St. Pickup before 8:00 PM. Head there now!
+
+  [no READY offer yet:]
+← Got it! We'll text you when food is available nearby.
+  [when donor goes READY later, recipient receives:]
+← Food available: 3 trays of pasta at 123 Main St. Pickup before 8:00 PM. Head there now!
 ```
 
 Time windows that have already passed when the SMS arrives are automatically
-rolled forward 24 hours — texting `9-10pm` at 11 PM registers for tomorrow.
+rolled forward 24 hours — texting `until 9pm` at 10 PM registers for tomorrow.
 
 ---
 
@@ -83,17 +88,22 @@ rolled forward 24 hours — texting `9-10pm` at 11 PM registers for tomorrow.
 # Simulate OFFER
 curl -X POST http://localhost:8080/twilio/sms \
   -d "From=%2B15551230001" \
-  -d "Body=OFFER+12+meals+6-7pm+123+Main+St"
+  -d "Body=OFFER+3+trays+of+pasta+until+8pm+123+Main+St"
 
 # Simulate READY
 curl -X POST http://localhost:8080/twilio/sms \
   -d "From=%2B15551230001" \
   -d "Body=READY"
 
-# Simulate NEED
+# Simulate NEED (with optional address)
 curl -X POST http://localhost:8080/twilio/sms \
   -d "From=%2B15551230002" \
-  -d "Body=NEED+20+meals+by+7pm+55+Church+St+priority%3A+2"
+  -d "Body=NEED+55+Church+St"
+
+# Simulate NEED (no address)
+curl -X POST http://localhost:8080/twilio/sms \
+  -d "From=%2B15551230003" \
+  -d "Body=NEED"
 
 # Check active nodes
 curl http://localhost:8081/v1/nodes

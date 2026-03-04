@@ -2,18 +2,10 @@ package node
 
 import (
 	"fmt"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/foodrelay/foodrelay/internal/common"
-)
-
-var (
-	qtyRe  = regexp.MustCompile(`^(\d+)\s*`)
-	unitRe = regexp.MustCompile(`(?i)^(meals?|items?|boxes?|bags?|portions?|servings?|units?|packages?|lbs?|kg)\b\s*`)
-	prioRe = regexp.MustCompile(`(?i)\bpriority:\s*(\d+)`)
 )
 
 // Parse parses an inbound SMS body into a ParsedCommand.
@@ -36,11 +28,11 @@ func Parse(text string, now time.Time) ParsedCommand {
 		return ParsedCommand{Type: "OFFER", Offer: o, RawText: text}
 
 	case "NEED":
-		n, err := parseNeed(rest, now)
-		if err != nil {
-			return ParsedCommand{Type: "UNKNOWN", RawText: text}
+		return ParsedCommand{
+			Type:    "NEED",
+			Need:    &Need{Location: strings.TrimSpace(rest), Status: "open"},
+			RawText: text,
 		}
-		return ParsedCommand{Type: "NEED", Need: n, RawText: text}
 
 	case "READY":
 		return ParsedCommand{Type: "READY", RawText: text}
@@ -48,8 +40,8 @@ func Parse(text string, now time.Time) ParsedCommand {
 	case "CANCEL":
 		return ParsedCommand{Type: "CANCEL", RawText: text}
 
-	case "HELP", "?":
-		return ParsedCommand{Type: "HELP", RawText: text}
+	case "FOOD", "?":
+		return ParsedCommand{Type: "FOOD", RawText: text}
 
 	default:
 		return ParsedCommand{Type: "UNKNOWN", RawText: text}
@@ -57,122 +49,29 @@ func Parse(text string, now time.Time) ParsedCommand {
 }
 
 // parseOffer parses the body after "OFFER ".
-// Grammar: <qty> [unit] <timewindow> <location> [notes: ...] [allergens: ...]
+// Grammar: <description> <timewindow> <location>
+// The time window (e.g. "until 8pm", "7-9pm") splits description from location.
 func parseOffer(s string, now time.Time) (*Offer, error) {
-	notes := extractKeyed(&s, "notes:")
-	allergens := extractKeyed(&s, "allergens:")
-
-	qty, unit, err := parseQtyUnit(&s)
-	if err != nil {
-		return nil, err
-	}
-
-	wStart, wEnd, rem, ok := common.FindTimeWindow(s, now)
+	description, wStart, wEnd, location, ok := common.SplitAtTimeWindow(s, now)
 	if !ok {
-		return nil, fmt.Errorf("could not parse time window from %q", s)
+		return nil, fmt.Errorf("could not find time window in %q; use e.g. 'until 8pm' or '7-9pm'", s)
 	}
 
-	location := strings.TrimSpace(rem)
+	description = strings.TrimSpace(description)
+	location = strings.TrimSpace(location)
+
+	if description == "" {
+		return nil, fmt.Errorf("missing description before time window")
+	}
 	if location == "" {
-		return nil, fmt.Errorf("missing location")
+		return nil, fmt.Errorf("missing location after time window")
 	}
 
 	return &Offer{
-		Qty:         qty,
-		Unit:        unit,
+		Description: description,
 		WindowStart: wStart,
 		WindowEnd:   wEnd,
 		Location:    location,
-		Notes:       notes,
-		Allergens:   allergens,
 		Status:      "awaiting_ready",
 	}, nil
-}
-
-// parseNeed parses the body after "NEED ".
-// Grammar: <qty> [unit] <timewindow> <location> [priority: N]
-func parseNeed(s string, now time.Time) (*Need, error) {
-	priority := 1
-	if m := prioRe.FindStringSubmatch(s); m != nil {
-		p, _ := strconv.Atoi(m[1])
-		priority = p
-		s = prioRe.ReplaceAllString(s, "")
-	}
-
-	qty, unit, err := parseQtyUnit(&s)
-	if err != nil {
-		return nil, err
-	}
-
-	wStart, wEnd, rem, ok := common.FindTimeWindow(s, now)
-	if !ok {
-		return nil, fmt.Errorf("could not parse time window from %q", s)
-	}
-
-	location := strings.TrimSpace(rem)
-	if location == "" {
-		return nil, fmt.Errorf("missing location")
-	}
-
-	return &Need{
-		Qty:         qty,
-		Unit:        unit,
-		WindowStart: wStart,
-		WindowEnd:   wEnd,
-		Location:    location,
-		Priority:    priority,
-		Status:      "open",
-	}, nil
-}
-
-// parseQtyUnit consumes "<qty> [unit] " from the front of *s.
-func parseQtyUnit(s *string) (qty int, unit string, err error) {
-	m := qtyRe.FindStringSubmatch(*s)
-	if m == nil {
-		return 0, "", fmt.Errorf("expected quantity number, got %q", *s)
-	}
-	qty, _ = strconv.Atoi(m[1])
-	*s = (*s)[len(m[0]):]
-
-	um := unitRe.FindStringSubmatch(*s)
-	if um != nil {
-		unit = strings.ToLower(um[1])
-		*s = (*s)[len(um[0]):]
-	} else {
-		unit = "meals"
-	}
-	return qty, unit, nil
-}
-
-// extractKeyed removes "key <value>" from *s and returns value.
-// Handles multiple keys by stopping at the next known keyword.
-func extractKeyed(s *string, key string) string {
-	lower := strings.ToLower(*s)
-	idx := strings.Index(lower, strings.ToLower(key))
-	if idx < 0 {
-		return ""
-	}
-
-	afterKey := strings.TrimSpace((*s)[idx+len(key):])
-	lowerAfter := strings.ToLower(afterKey)
-
-	otherKeys := []string{"notes:", "allergens:", "priority:"}
-	nextIdx := len(afterKey)
-	for _, k := range otherKeys {
-		if k == key {
-			continue
-		}
-		if i := strings.Index(lowerAfter, k); i >= 0 && i < nextIdx {
-			nextIdx = i
-		}
-	}
-
-	value := strings.TrimSpace(afterKey[:nextIdx])
-	before := strings.TrimSpace((*s)[:idx])
-	after := ""
-	if nextIdx < len(afterKey) {
-		after = " " + afterKey[nextIdx:]
-	}
-	*s = strings.TrimSpace(before + after)
-	return value
 }
