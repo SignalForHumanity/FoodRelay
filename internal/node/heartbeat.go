@@ -92,7 +92,7 @@ func (h *HeartbeatClient) HeartbeatAll() {
 func (h *HeartbeatClient) Run(stop <-chan struct{}) {
 	h.AnnounceAll()
 
-	ticker := time.NewTicker(5 * time.Minute)
+	ticker := time.NewTicker(24 * time.Hour)
 	defer ticker.Stop()
 
 	for {

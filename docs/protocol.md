@@ -190,8 +190,9 @@ If a registry goes down:
 
 ## Active node definition
 
-A node is considered active for the public `/v1/nodes` endpoint if its `last_seen`
-is within the past **15 minutes**.
+Nodes heartbeat every **24 hours**. A node is considered active for the public
+`/v1/nodes` endpoint if its `last_seen` is within the past **48 hours** (2×
+heartbeat interval — allows one missed heartbeat before being considered stale).
 
-The federation `/v1/federation/nodes` endpoint uses a **24-hour** window so peers
-can recover missed updates after a brief outage.
+The federation `/v1/federation/nodes` endpoint uses a **72-hour** window so peers
+can recover after a multi-day outage without losing node records.

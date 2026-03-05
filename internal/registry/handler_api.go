@@ -112,7 +112,7 @@ func (h *Handler) Heartbeat(w http.ResponseWriter, r *http.Request) {
 // ListNodes handles GET /v1/nodes.
 // Returns nodes active within the last 15 minutes.
 func (h *Handler) ListNodes(w http.ResponseWriter, r *http.Request) {
-	since := time.Now().Add(-15 * time.Minute)
+	since := time.Now().Add(-48 * time.Hour)
 	nodes, err := h.Store.ListActiveNodes(since)
 	if err != nil {
 		common.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "db error"})
@@ -144,7 +144,7 @@ func (h *Handler) ListNodes(w http.ResponseWriter, r *http.Request) {
 // Returns all nodes seen in the last 24 hours, including public_key and last_seen as int64.
 // This endpoint is used exclusively by peer registries for gossip synchronisation.
 func (h *Handler) FederationNodes(w http.ResponseWriter, r *http.Request) {
-	since := time.Now().Add(-24 * time.Hour)
+	since := time.Now().Add(-72 * time.Hour)
 	nodes, err := h.Store.ListAllNodes(since)
 	if err != nil {
 		common.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "db error"})

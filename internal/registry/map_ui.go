@@ -64,7 +64,7 @@ const mapHTML = `<!doctype html>
 
         const lastSeenSec = n.last_seen ? Math.floor(new Date(n.last_seen).getTime() / 1000) : 0;
         const age    = lastSeenSec ? (nowSec - lastSeenSec) : 999999;
-        const active = age <= 900; // 15 min
+        const active = age <= 172800; // 48 h (2× heartbeat interval)
 
         const statusPill = active
           ? '<span class="pill pill-active">active</span>'
