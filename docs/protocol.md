@@ -2,7 +2,7 @@
 
 ## Overview
 
-Nodes announce themselves on boot and send a heartbeat every 5 minutes to every
+Nodes announce themselves on boot and send a heartbeat every 24 hours to every
 registry listed in `REGISTRY_URLS`. Registries verify ed25519 signatures to prevent
 spoofing. Multiple registries form a federation mesh by pulling records from each other
 every 5 minutes via a gossip endpoint.
@@ -56,7 +56,7 @@ on re-announce.
 
 ### POST /v1/nodes/heartbeat
 
-Updates `last_seen` for an existing node. Called every 5 minutes.
+Updates `last_seen` for an existing node. Called every 24 hours.
 Verified against the stored public key.
 
 **Request body (JSON):**
@@ -86,7 +86,7 @@ signature = ed25519.Sign(privateKey, []byte(message))
 
 ### GET /v1/nodes
 
-Returns all nodes active within the last 15 minutes. Public; no authentication.
+Returns all nodes active within the last 48 hours. Public; no authentication.
 
 **Response 200:**
 ```json
@@ -113,7 +113,7 @@ Returns all nodes active within the last 15 minutes. Public; no authentication.
 Returns all nodes seen in the last 24 hours, including the original announce signature.
 Used exclusively by peer registries for gossip synchronisation.
 
-The response window is 24 hours (vs. 15 minutes for `/v1/nodes`) so that a peer which
+The response window is 72 hours (vs. 48 hours for `/v1/nodes`) so that a peer which
 was briefly offline can catch up without missing records.
 
 **Response 200:**
